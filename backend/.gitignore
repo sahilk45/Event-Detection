@@ -12,10 +12,6 @@ env/
 .venv/
 .env
 
-# Large model files (optional - depends on your model size)
-models/*.pkl
-models/*.h5
-models/*.npy
 
 # Temporary uploads
 uploads/

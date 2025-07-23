@@ -1,0 +1,50 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.pyc
+*.pyo
+*.pyd
+
+# Virtual Environment
+venv/
+env/
+.venv/
+.env
+
+# Large model files (optional - depends on your model size)
+models/*.pkl
+models/*.h5
+models/*.npy
+
+# Temporary uploads
+uploads/
+temp/
+*.wav
+*.mp3
+*.tmp
+
+# Logs
+*.log
+logs/
+
+# Database
+*.db
+*.sqlite3
+
+# Environment variables
+.env
+.env.production
+.env.development
+
+# IDE
+.vscode/
+.idea/
+
+# Testing
+.pytest_cache/
+.coverage
+htmlcov/
+
+# Jupyter Notebooks
+.ipynb_checkpoints

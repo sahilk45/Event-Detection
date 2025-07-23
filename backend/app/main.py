@@ -1,33 +1,41 @@
-import os
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from app.api.routes import router
+import os
 
 app = FastAPI(
     title="Acoustic Event Detection API",
-    description="API for detecting acoustic events in audio files",
+    description="AI-powered audio analysis with smart alerts",
     version="1.0.0"
 )
 
-# Get CORS origins from environment
-allowed_origins = os.getenv("ALLOWED_ORIGINS", "http://localhost:3000").split(",")
+# Production CORS configuration
+origins = [
+    "http://localhost:3000",  # Local development
+    "https://*.onrender.com",  # All Render domains
+    "https://acoustic-event-detection.onrender.com",  # Your frontend URL (update after deployment)
+]
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=allowed_origins,
+    allow_origins=["*"],  # Allow all for now, restrict later
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
 
+# Include API routes
 app.include_router(router, prefix="/api/v1")
 
 @app.get("/")
 async def root():
-    return {"message": "Acoustic Event Detection API is running", "status": "healthy"}
+    return {
+        "message": "Acoustic Event Detection API",
+        "status": "healthy",
+        "version": "1.0.0",
+        "features": ["file_upload", "live_recording", "smart_alerts"]
+    }
 
-if __name__ == "__main__":
-    import uvicorn
-    host = os.getenv("HOST", "0.0.0.0")
-    port = int(os.getenv("PORT", 8000))
-    uvicorn.run(app, host=host, port=port)
+@app.get("/health")
+async def health_check():
+    return {"status": "healthy", "service": "acoustic-event-detection"}

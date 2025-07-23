@@ -4,6 +4,7 @@ import pickle
 import os
 import joblib
 import functools
+import gc
 
 class AudioClassifier:
     def __init__(self, model_path: str, metadata_path: str = None):
@@ -15,12 +16,22 @@ class AudioClassifier:
         self.load_model()
         
     def load_model(self):
-        """Load model with automatic type detection."""
+        """Load model with memory optimization and automatic type detection."""
         try:
+            # Memory optimization: Set environment variables before loading
+            os.environ['TF_CPP_MIN_LOG_LEVEL'] = '2'  # Reduce TensorFlow logging
+            os.environ['TF_FORCE_GPU_ALLOW_GROWTH'] = 'true'
+            os.environ['TF_ENABLE_ONEDNN_OPTS'] = '0'  # Disable oneDNN optimizations to save memory
+            
+            # Force garbage collection before loading large model
+            gc.collect()
+            
             # Load .pkl file (which may contain TensorFlow models)
             if self.model_path.endswith('.pkl'):
                 try:
                     print(f"Loading model from: {self.model_path}")
+                    
+                    # Memory-efficient model loading
                     with open(self.model_path, 'rb') as f:
                         self.model = pickle.load(f)
                     
@@ -28,12 +39,25 @@ class AudioClassifier:
                     if hasattr(self.model, 'predict') and hasattr(self.model, 'layers'):
                         self.model_type = "tensorflow"
                         print("✅ Detected TensorFlow/Keras model in .pkl file")
+                        
+                        # TensorFlow memory optimization
+                        try:
+                            import tensorflow as tf
+                            # Configure TensorFlow for memory efficiency
+                            tf.config.threading.set_intra_op_parallelism_threads(1)
+                            tf.config.threading.set_inter_op_parallelism_threads(1)
+                        except ImportError:
+                            pass
+                        
                     elif hasattr(self.model, 'predict_proba'):
                         self.model_type = "sklearn"
                         print("✅ Detected scikit-learn model in .pkl file")
                     else:
                         self.model_type = "unknown"
                         print("⚠️ Unknown model type detected")
+                        
+                    # Clean up after model loading
+                    gc.collect()
                         
                 except Exception as pkl_error:
                     print(f"❌ Pickle loading failed: {pkl_error}")
@@ -94,14 +118,9 @@ class AudioClassifier:
             'n_fft': 2048,
             'hop_length': 512
         }
-    
-        @functools.lru_cache(maxsize=1)
-        def load_model_cached(model_path):
-            # Cache model loading to prevent reload on every request
-            return pickle.load(open(model_path, 'rb'))
-    
+
     def predict(self, features: np.ndarray) -> Dict[str, Any]:
-        """Make prediction with smart alert system for high-confidence dangerous events."""
+        """Make prediction with smart alert system and memory optimization."""
         if self.model is None:
             return {
                 'predicted_category': 'unknown',
@@ -111,8 +130,13 @@ class AudioClassifier:
             }
             
         try:
+            # Memory optimization: Clean up before prediction
+            gc.collect()
+            
             if self.model_type == "tensorflow":
                 # For TensorFlow models, ensure proper 4D shape: (batch, height, width, channels)
+                original_features = features  # Keep reference for cleanup
+                
                 if len(features.shape) == 3:  # (batch, n_mfcc, time_steps)
                     # Add channel dimension: (batch, n_mfcc, time_steps, 1)
                     features_4d = np.expand_dims(features, axis=-1)
@@ -121,10 +145,15 @@ class AudioClassifier:
                 
                 print(f"TensorFlow input shape: {features_4d.shape}")
                 
-                # Make prediction
-                predictions = self.model.predict(features_4d, verbose=0)
-                print(f"Model predictions type: {type(predictions)}")
-                print(f"Predictions shape: {[p.shape for p in predictions] if isinstance(predictions, list) else predictions.shape}")
+                # Make prediction with memory cleanup
+                try:
+                    predictions = self.model.predict(features_4d, verbose=0, batch_size=1)
+                    print(f"Model predictions type: {type(predictions)}")
+                    print(f"Predictions shape: {[p.shape for p in predictions] if isinstance(predictions, list) else predictions.shape}")
+                finally:
+                    # Clean up intermediate variables
+                    del features_4d
+                    gc.collect()
                 
             elif self.model_type == "sklearn":
                 # For scikit-learn models, flatten the features
@@ -164,11 +193,11 @@ class AudioClassifier:
             )
             category_confidence = float(np.max(category_pred[0]))
             
-            # Get all class probabilities
-            class_probabilities = {
-                self.metadata['category_mapping'].get(i, f"class_{i}"): float(prob)
-                for i, prob in enumerate(category_pred[0])
-            }
+            # Get all class probabilities with memory efficiency
+            class_probabilities = {}
+            for i, prob in enumerate(category_pred[0]):
+                category_name = self.metadata['category_mapping'].get(i, f"class_{i}")
+                class_probabilities[category_name] = float(prob)
             
             result = {
                 'predicted_category': predicted_category,
@@ -214,11 +243,23 @@ class AudioClassifier:
             if alert_triggered['should_alert']:
                 print(f"🚨 ALERT TRIGGERED: {event_name} detected with {confidence_to_use:.1%} confidence!")
             
+            # Memory cleanup after prediction
+            del predictions
+            if 'category_pred' in locals():
+                del category_pred
+            if 'subcategory_pred' in locals() and subcategory_pred is not None:
+                del subcategory_pred
+            gc.collect()
+            
             return result
             
         except Exception as e:
             error_msg = f"Prediction failed: {str(e)}"
             print(f"❌ {error_msg}")
+            
+            # Clean up on error
+            gc.collect()
+            
             return {
                 'predicted_category': 'error',
                 'confidence': 0.0,
@@ -229,10 +270,7 @@ class AudioClassifier:
 
     def _check_alert_conditions(self, category: str, subcategory: str, 
                                cat_confidence: float, sub_confidence: float) -> Dict[str, Any]:
-        """
-        Smart alert system based on AISOC project specifications.
-        Triggers alerts for dangerous/important events with >70% confidence.
-        """
+        """Smart alert system based on AISOC project specifications."""
         # Define alert-worthy events from your AISOC project
         ALERT_EVENTS = {
             # Emergency sounds
@@ -267,7 +305,6 @@ class AudioClassifier:
         primary_confidence = sub_confidence if sub_confidence > 0 else cat_confidence
         
         # Check if this event should trigger an alert
-        should_alert = False
         alert_info = {
             'should_alert': False,
             'event_name': primary_event,
@@ -289,7 +326,6 @@ class AudioClassifier:
                     break
             
             if event_key:
-                should_alert = True
                 alert_info.update({
                     'should_alert': True,
                     'priority': ALERT_EVENTS[event_key]['priority'],
@@ -337,3 +373,12 @@ class AudioClassifier:
             pass
             
         return model_info
+
+    def __del__(self):
+        """Clean up resources when object is destroyed."""
+        try:
+            if hasattr(self, 'model') and self.model is not None:
+                del self.model
+            gc.collect()
+        except:
+            pass

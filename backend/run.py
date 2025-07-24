@@ -1,26 +1,25 @@
 import os
-import gc
-
-# Memory optimization for Render free tier
-os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3'
-os.environ['TF_ENABLE_ONEDNN_OPTS'] = '0'
-os.environ['PYTHONHASHSEED'] = '0'
-
-# Force garbage collection
-gc.collect()
-
 import uvicorn
 from app.main import app
 
-if __name__ == "__main__":
-    port = int(os.environ.get("PORT", 8000))
+def main():
+    """Run the FastAPI application with production settings."""
+    # Get configuration from environment variables
     host = os.environ.get("HOST", "0.0.0.0")
+    port = int(os.environ.get("PORT", 8000))
     
+    # Production configuration
     uvicorn.run(
         app,
         host=host,
         port=port,
-        reload=False,
-        workers=1,
-        log_level="info"
+        reload=False,  # Disable reload in production
+        workers=1,     # Single worker for model consistency
+        log_level="info",
+        access_log=True,
+        loop="uvloop",  # Better performance
+        http="httptools"  # Better performance
     )
+
+if __name__ == "__main__":
+    main()

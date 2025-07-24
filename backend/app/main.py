@@ -24,8 +24,8 @@ app.add_middleware(GZipMiddleware, minimum_size=1000)
 origins = [
     "http://localhost:3000",  # Local development
     "https://*.onrender.com",  # Render domains
-    "https://*.vercel.app",    # Vercel domains
-    "https://*.netlify.app",   # Netlify domains
+    "https://your-frontend-name.onrender.com",  # Your deployed frontend URL
+    "https://*.onrender.com",  # Allow all Render subdomains
 ]
 
 app.add_middleware(

@@ -11,7 +11,7 @@ from app.utils.audio_processing import AudioProcessor
 router = APIRouter()
 
 # Updated paths to use the .pkl file
-MODEL_PATH = "models/model1.pkl"  # Changed from audio_processing.h5
+MODEL_PATH = "models/model1.keras"  # Changed from audio_processing.h5
 METADATA_PATH = "models/metadata.npy"
 
 try:

@@ -5,6 +5,7 @@ import os
 import joblib
 import functools
 
+
 class AudioClassifier:
     def __init__(self, model_path: str, metadata_path: str = None):
         self.model_path = model_path
@@ -17,27 +18,41 @@ class AudioClassifier:
     def load_model(self):
         """Load model with automatic type detection."""
         try:
-            # Load .pkl file (which may contain TensorFlow models)
-            if self.model_path.endswith('.pkl'):
-                try:
-                    print(f"Loading model from: {self.model_path}")
-                    with open(self.model_path, 'rb') as f:
-                        self.model = pickle.load(f)
-                    
-                    # Detect model type based on attributes
-                    if hasattr(self.model, 'predict') and hasattr(self.model, 'layers'):
+            # Load .keras or .pkl file
+            if self.model_path.endswith('.pkl') or self.model_path.endswith('.keras'):
+                if self.model_path.endswith('.keras'):
+                    # Load TensorFlow native format
+                    try:
+                        import tensorflow as tf
+                        print(f"Loading model from: {self.model_path}")
+                        self.model = tf.keras.models.load_model(self.model_path)
                         self.model_type = "tensorflow"
-                        print("✅ Detected TensorFlow/Keras model in .pkl file")
-                    elif hasattr(self.model, 'predict_proba'):
-                        self.model_type = "sklearn"
-                        print("✅ Detected scikit-learn model in .pkl file")
-                    else:
-                        self.model_type = "unknown"
-                        print("⚠️ Unknown model type detected")
+                        print("✅ Model loaded successfully using TensorFlow native format")
+                    except Exception as keras_error:
+                        print(f"❌ Keras loading failed: {keras_error}")
+                        raise RuntimeError(f"Failed to load .keras model: {keras_error}")
                         
-                except Exception as pkl_error:
-                    print(f"❌ Pickle loading failed: {pkl_error}")
-                    raise RuntimeError(f"Failed to load .pkl model: {pkl_error}")
+                elif self.model_path.endswith('.pkl'):
+                    # Original pickle loading code...
+                    try:
+                        print(f"Loading model from: {self.model_path}")
+                        with open(self.model_path, 'rb') as f:
+                            self.model = pickle.load(f)
+                        
+                        # Detect model type based on attributes
+                        if hasattr(self.model, 'predict') and hasattr(self.model, 'layers'):
+                            self.model_type = "tensorflow"
+                            print("✅ Detected TensorFlow/Keras model in .pkl file")
+                        elif hasattr(self.model, 'predict_proba'):
+                            self.model_type = "sklearn"
+                            print("✅ Detected scikit-learn model in .pkl file")
+                        else:
+                            self.model_type = "unknown"
+                            print("⚠️ Unknown model type detected")
+                            
+                    except Exception as pkl_error:
+                        print(f"❌ Pickle loading failed: {pkl_error}")
+                        raise RuntimeError(f"Failed to load .pkl model: {pkl_error}")
             else:
                 raise RuntimeError(f"Unsupported model format: {self.model_path}")
                 
@@ -94,11 +109,11 @@ class AudioClassifier:
             'n_fft': 2048,
             'hop_length': 512
         }
-    
-        @functools.lru_cache(maxsize=1)
-        def load_model_cached(model_path):
-            # Cache model loading to prevent reload on every request
-            return pickle.load(open(model_path, 'rb'))
+
+    @functools.lru_cache(maxsize=1)
+    def load_model_cached(model_path):
+        # Cache model loading to prevent reload on every request
+        return pickle.load(open(model_path, 'rb'))
     
     def predict(self, features: np.ndarray) -> Dict[str, Any]:
         """Make prediction with smart alert system for high-confidence dangerous events."""

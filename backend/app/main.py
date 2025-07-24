@@ -20,21 +20,22 @@ app = FastAPI(
 # Add compression middleware
 app.add_middleware(GZipMiddleware, minimum_size=1000)
 
-# CORS configuration for production
+# CORRECTED CORS configuration
 origins = [
     "http://localhost:3000",  # Local development
-    "https://*.onrender.com",  # Render domains
-    "https://event-detection-frontened.onrender.com/",  # Your deployed frontend URL
-    "https://*.onrender.com",  # Allow all Render subdomains
+    "http://localhost:5173",  # Vite development
+    "https://event-detection-frontened.onrender.com",  # Exact frontend URL (no trailing slash)
+    # Add other specific Render URLs as needed
 ]
 
 app.add_middleware(
     CORSMiddleware,
     allow_origins=origins,
     allow_credentials=True,
-    allow_methods=["*"],
+    allow_methods=["GET", "POST", "PUT", "DELETE", "OPTIONS"],
     allow_headers=["*"],
 )
+
 
 # Include API routes
 app.include_router(router, prefix="/api/v1")

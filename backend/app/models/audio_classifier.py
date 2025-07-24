@@ -22,12 +22,12 @@ class AudioClassifier:
     def load_model(self):
         """Load model with Keras compatibility fixes and memory optimization."""
         try:
-            # Memory optimization: Set environment variables before loading
+        
+            # Reduce TensorFlow memory usage
             os.environ['TF_CPP_MIN_LOG_LEVEL'] = '2'
-            os.environ['TF_FORCE_GPU_ALLOW_GROWTH'] = 'true'
             os.environ['TF_ENABLE_ONEDNN_OPTS'] = '0'
-            
-            # Force garbage collection before loading large model
+        
+            # Clean memory before loading
             gc.collect()
             
             # Import TensorFlow and setup Keras compatibility

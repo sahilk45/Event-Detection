@@ -1,31 +1,44 @@
-# Build stage
-FROM node:18-alpine as build
+# Use Python 3.12.2 specifically to match your local environment
+FROM python:3.12.2-slim
 
+# Set working directory
 WORKDIR /app
 
-# Copy package files
-COPY package*.json ./
+# Create non-root user for security
+RUN groupadd -r app && useradd -r -g app app
 
-# Install dependencies
-RUN npm ci --only=production
+# Install system dependencies required for audio processing and ML libraries
+RUN apt-get update && apt-get install -y \
+    build-essential \
+    libsndfile1 \
+    ffmpeg \
+    libavcodec-extra \
+    libffi-dev \
+    libssl-dev \
+    pkg-config \
+    && rm -rf /var/lib/apt/lists/*
 
-# Copy source code
-COPY . .
+# Copy requirements first for better caching
+# Since build context is backend/, requirements.txt should be in backend/
+COPY requirements.txt .
 
-# Build the application
-RUN npm run build
+# Install Python dependencies
+RUN pip install --no-cache-dir --upgrade pip && \
+    pip install --no-cache-dir -r requirements.txt
 
-# Production stage
-FROM nginx:alpine
+# Copy application code
+# This copies everything from backend/ directory
+COPY --chown=app:app . .
 
-# Copy built app from build stage
-COPY --from=build /app/build /usr/share/nginx/html
+# Create models directory if it doesn't exist
+RUN mkdir -p models && chown -R app:app models
 
-# Copy nginx configuration
-COPY nginx.conf /etc/nginx/nginx.conf
+# Switch to non-root user
+USER app
 
-# Expose port
-EXPOSE 80
+# Expose the port your FastAPI app runs on
+EXPOSE 8000
 
-# Start nginx
-CMD ["nginx", "-g", "daemon off;"]
+# Command to run the application
+# Adjust this based on your FastAPI app structure in backend/
+CMD ["uvicorn", "main:app", "--host", "0.0.0.0", "--port", "8000"]

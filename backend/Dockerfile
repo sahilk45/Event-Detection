@@ -3,7 +3,7 @@ FROM python:3.11-slim
 # Set working directory
 WORKDIR /app
 
-# Install system dependencies
+# Install system dependencies for audio processing
 RUN apt-get update && apt-get install -y \
     libsndfile1 \
     ffmpeg \
@@ -14,20 +14,16 @@ RUN apt-get update && apt-get install -y \
 
 # Create non-root user
 RUN useradd --create-home --shell /bin/bash app
-
-# Set working directory for app
 WORKDIR /home/app
 
-# Copy backend requirements from correct path
-COPY --chown=app:app backend/requirements.txt .
+# Copy requirements first for better caching
+COPY --chown=app:app requirements.txt .
 
 # Install Python dependencies
-RUN pip install --no-cache-dir --upgrade pip && \
-    pip install --no-cache-dir -r requirements.txt
+RUN pip install --no-cache-dir -r requirements.txt
 
-
-# Copy entire backend application
-COPY --chown=app:app backend/ .
+# Copy entire application
+COPY --chown=app:app . .
 
 # Create models directory if it doesn't exist
 RUN mkdir -p models

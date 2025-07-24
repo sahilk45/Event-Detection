@@ -4,7 +4,7 @@ uvloop==0.21.0
 httptools==0.6.4
 python-multipart==0.0.6
 librosa==0.11.0
-tensorflow==2.15.0
+tf-nightly==2.21.0.dev20250722 
 numpy==1.26.4
 scipy==1.15.2
 h5py==3.13.0

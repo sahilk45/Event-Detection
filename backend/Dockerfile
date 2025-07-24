@@ -22,7 +22,9 @@ WORKDIR /home/app
 COPY --chown=app:app backend/requirements.txt .
 
 # Install Python dependencies
-RUN pip install --no-cache-dir -r requirements.txt
+RUN pip install --no-cache-dir --upgrade pip && \
+    pip install --no-cache-dir -r requirements.txt
+
 
 # Copy entire backend application
 COPY --chown=app:app backend/ .
